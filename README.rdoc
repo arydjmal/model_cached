@@ -11,16 +11,16 @@ Is about 60 lines of code, so don't be shy to look at the source for full unders
 
 In your model:
 
-	# defines find_by_id, and handles the cache refresh or expiration
+  # defines find_by_id, and handles the cache refresh or expiration
   cache_by :id
-
-	# same plus defines find_by_email
-	cache_by :id, :email
-	
-	# same but only gives you the cache version if call it with the right scope
-	# eg: User.find_by_id(1)				  				=> will not use cache
-	# eg: current_account.users.find_by_id(1) => will use cache
-	cache_by :id, :email, :scope => :account_id
+  
+  # same plus defines find_by_email
+  cache_by :id, :email
+  
+  # same but only gives you the cache version if call it with the right scope
+  # eg: User.find_by_id(1) => will not use cache
+  # eg: current_account.users.find_by_id(1) => will use cache
+  cache_by :id, :email, :scope => :account_id
 
 
 == Real life example
