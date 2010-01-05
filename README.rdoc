@@ -1,0 +1,76 @@
+= model_cached plugin
+
+This Rails plugin gives you the ability to transparently cache single active record objects.
+
+The purpose is to cache by fields that are being validated for unique values.
+
+Is about 60 lines of code, so don't be shy to look at the source for full understanding.
+
+
+== Usage
+
+In your model:
+
+	# defines find_by_id, and handles the cache refresh or expiration
+  cache_by :id
+
+	# same plus defines find_by_email
+	cache_by :id, :email
+	
+	# same but only gives you the cache version if call it with the right scope
+	# eg: User.find_by_id(1)				  				=> will not use cache
+	# eg: current_account.users.find_by_id(1) => will use cache
+	cache_by :id, :email, :scope => :account_id
+
+
+== Real life example
+
+	class Account < ActiveRecord::Base
+		has_many :users
+		cache_by :subdomain
+	end
+	
+	class User < ActiveRecord::Base
+		belongs_to :account
+		cache_by :id, :scope => :account_id
+	end
+
+	class ApplicationController < ActionController::Base
+		before_filter :require_account, :require_user
+		
+		private
+		
+		def current_account
+			@account ||= Account.find_by_subdomain(request.subdomains(0).first)
+		end
+		
+		def current_user
+			@user ||= session[:user_id] ? current_account.users.find_by_id(session[:user_id]) : nil
+		end
+		
+		def require_account
+			unless current_account
+				redirect_to sign_up_url
+			end
+		end
+		
+		def require_user
+			unless current_account
+				redirect_to sign_in_url
+			end
+		end
+	end
+
+
+== Dependencies
+
+	memcached
+
+
+== Install
+
+	./script/plugin install git://github.com/arydjmal/model_cached.git
+
+
+
+Copyright (c) 2010 Ary Djmal, released under the MIT license
