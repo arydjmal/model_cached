@@ -25,51 +25,51 @@ In your model:
 
 == Real life example
 
-	class Account < ActiveRecord::Base
-		has_many :users
-		cache_by :subdomain
-	end
-	
-	class User < ActiveRecord::Base
-		belongs_to :account
-		cache_by :id, :scope => :account_id
-	end
+  class Account < ActiveRecord::Base
+    has_many :users
+    cache_by :subdomain
+  end
+  
+  class User < ActiveRecord::Base
+    belongs_to :account
+    cache_by :id, :scope => :account_id
+  end
 
-	class ApplicationController < ActionController::Base
-		before_filter :require_account, :require_user
-		
-		private
-		
-		def current_account
-			@account ||= Account.find_by_subdomain(request.subdomains(0).first)
-		end
-		
-		def current_user
-			@user ||= session[:user_id] ? current_account.users.find_by_id(session[:user_id]) : nil
-		end
-		
-		def require_account
-			unless current_account
-				redirect_to sign_up_url
-			end
-		end
-		
-		def require_user
-			unless current_account
-				redirect_to sign_in_url
-			end
-		end
-	end
+  class ApplicationController < ActionController::Base
+    before_filter :require_account, :require_user
+    
+    private
+    
+    def current_account
+      @account ||= Account.find_by_subdomain(request.subdomains(0).first)
+    end
+    
+    def current_user
+      @user ||= session[:user_id] ? current_account.users.find_by_id(session[:user_id]) : nil
+    end
+    
+    def require_account
+      unless current_account
+        redirect_to sign_up_url
+      end
+    end
+    
+    def require_user
+      unless current_account
+        redirect_to sign_in_url
+      end
+    end
+  end
 
 
 == Dependencies
 
-	memcached
+  memcached
 
 
 == Install
 
-	./script/plugin install git://github.com/arydjmal/model_cached.git
+  ./script/plugin install git://github.com/arydjmal/model_cached.git
 
 
 
