@@ -23,7 +23,19 @@ class ModelCachedTest < Test::Unit::TestCase
     user = $db[1]
     assert_equal 'users/email/Ary', user.class.make_cache_key('email', user.email)
   end
-    
+  
+  def test_find_with_correct_data_when_not_in_cache
+    assert_equal nil, Rails.cache.read('users/id/1')
+    assert_equal $db[1], User.find(1)
+    assert_equal $db[1], Rails.cache.read('users/id/1')
+  end
+  
+  def test_find_with_incorrect_data_when_not_in_cache
+    assert_raise(ActiveRecord::RecordNotFound) do
+      User.find(10)
+    end
+  end
+  
   def test_find_by_id_with_correct_data_when_not_in_cache
     assert_equal $db[1], User.find_by_id(1)
   end
@@ -62,6 +74,14 @@ class ModelCachedTest < Test::Unit::TestCase
     assert_equal nil, Rails.cache.read('users/email/Ary')
     assert_equal user, Rails.cache.read('users/email/new_email')
   end
+  
+  def test_should_expire_cache_on_destroy
+    assert_equal nil, Rails.cache.read('users/id/1')
+    user = User.find_by_id(1)
+    assert_equal user, Rails.cache.read('users/id/1')
+    user.destroy
+    assert_equal nil, Rails.cache.read('users/id/1')
+  end
 end
 
 class ModelCachedWithScopeTest < Test::Unit::TestCase
@@ -87,7 +107,7 @@ class ModelCachedWithScopeTest < Test::Unit::TestCase
     user = $db[1]
     assert_equal 'users/email/Ary/account_id:1', user.class.make_cache_key('email', user.email, user.cache_key_scope('account_id'))
   end
-    
+  
   def test_find_by_id_with_correct_data_when_not_in_cache
     assert_equal $db[1], current_account.users.find_by_id(1)
   end
@@ -125,5 +145,47 @@ class ModelCachedWithScopeTest < Test::Unit::TestCase
     user.save
     assert_equal nil, Rails.cache.read('users/email/Ary/account_id:1')
     assert_equal user, Rails.cache.read('users/email/new_email/account_id:1')
+  end
+end
+
+class ModelCachedWithDefaultLogicalDeleteTest < Test::Unit::TestCase
+  def setup
+    Rails.cache.clear
+    User.send(:cache_by, :id)
+    User.class_eval { def deleted?() deleted == true; end }
+    $db = {
+      1 => User.new(:id => 1, :email => 'Ary',  :account_id => 1, :deleted => false),
+      2 => User.new(:id => 2, :email => 'Nati', :account_id => 1, :deleted => false)
+    }
+  end
+  
+  def test_default_logical_delete
+    assert_equal nil, Rails.cache.read('users/id/1')
+    user = User.find_by_id(1)
+    assert_equal user, Rails.cache.read('users/id/1')
+    user.deleted = true
+    user.save
+    assert_equal nil, Rails.cache.read('users/id/1')
+  end
+end
+
+class ModelCachedWithOtherLogicalDeleteTest < Test::Unit::TestCase
+  def setup
+    Rails.cache.clear
+    User.send(:cache_by, :id, :logical_delete => :is_deleted?)
+    User.class_eval { def is_deleted?() deleted == true; end }
+    $db = {
+      1 => User.new(:id => 1, :email => 'Ary',  :account_id => 1, :deleted => false),
+      2 => User.new(:id => 2, :email => 'Nati', :account_id => 1, :deleted => false)
+    }
+  end
+  
+  def test_default_logical_delete
+    assert_equal nil, Rails.cache.read('users/id/1')
+    user = User.find_by_id(1)
+    assert_equal user, Rails.cache.read('users/id/1')
+    user.deleted = true
+    user.save
+    assert_equal nil, Rails.cache.read('users/id/1')
   end
 end

@@ -14,8 +14,12 @@ module Rails
   def self.cache() $cache ||= ActiveSupport::Cache.lookup_store(:mem_cache_store); end
 end
 
+module ActiveRecord
+  class RecordNotFound < StandardError; end
+end
+
 class User
-  COLUMNS = %w( id email account_id )
+  COLUMNS = %w( id email account_id deleted )
   COLUMNS.each { |column| attr_accessor column }
 
   COLUMNS.each do |column|
@@ -24,10 +28,14 @@ class User
     end
   end
   
-  def self.before_save_callbacks() @before_save_callbacks ||= []; end
-  def self.before_save(name) before_save_callbacks << name; end
-  def self.after_save_callbacks() @after_save_callbacks ||= []; end
-  def self.after_save(name) after_save_callbacks << name; end
+  HOOKS = %w( before_save before_update before_destroy after_save after_update after_destroy )
+  HOOKS.each do |hook|
+    class_eval %{
+      def self.#{hook}_callbacks() @#{hook}_callbacks ||= []; end
+      def self.#{hook}(*args) #{hook}_callbacks << args; end
+    }, __FILE__, __LINE__
+  end
+
   def self.scope(action, column) 1; end
   def self.users() self; end
   def initialize(params={}) params.each { |key, value| instance_variable_set("@#{key}", value) }; self; end
@@ -41,9 +49,17 @@ class User
   end
   
   def save
-    self.class.before_save_callbacks.each { |callback| self.send(callback) }
+    run_callbacks(self.class.before_save_callbacks)
+    run_callbacks(self.class.before_update_callbacks)
     $db[id] = self
-    self.class.after_save_callbacks.each { |callback| self.send(callback) }
+    run_callbacks(self.class.after_save_callbacks)
+    run_callbacks(self.class.after_update_callbacks)
+  end
+  
+  def destroy
+    run_callbacks(self.class.before_destroy_callbacks)
+    $db.delete(id)
+    run_callbacks(self.class.after_destroy_callbacks)
   end
 
   def ==(other)
@@ -64,6 +80,14 @@ class User
   def self.first(options={})
     column, value = options[:conditions].to_a.first
     $db.detect { |record| record.last.send(column) == value }.try(:last).try(:clone)
+  end
+  
+  private
+  
+  def run_callbacks(callbacks)
+    callbacks.each do |callback, options|
+      self.send(callback) if !options || !options[:if] || send(options[:if])
+    end
   end
 end
 
