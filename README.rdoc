@@ -1,6 +1,6 @@
 = model_cached plugin
 
-This Rails plugin gives you the ability to transparently cache single active record objects.
+This Rails plugin gives you the ability to transparently cache single active record objects using memcached.
 
 The purpose is to cache by fields that are being validated for unique values.
 
