@@ -14,7 +14,7 @@ It is less than 100 lines of code, so don't be shy to look at the source for ful
 In your model:
 
   # defines find_by_id, and handles the cache refresh or expiration
-	# also modifies find, so when pass a single integer it uses find_by_id or raises and exception
+  # also modifies find, so when pass a single integer it uses find_by_id or raises and exception
   cache_by :id
   
   # same plus defines find_by_email
@@ -25,8 +25,9 @@ In your model:
   # eg: current_account.users.find_by_id(1) => will use cache
   cache_by :id, :email, :scope => :account_id
 
-  # you should use the :logical_delete if you do logical delete and the method to verify if a record is deleted is different than :deleted?, disregard if not using logical deletes
-	# so out of the box the plugin works with destroys and with logical deletes
+  # you should use the :logical_delete option if the method to verify a record is deleted
+  # is different than :deleted?, disregard if not using logical deletes
+  # so out of the box the plugin works with destroys and with logical deletes
   cache_by :id, :email, :logical_delete => :is_deleted?
 
 == Real life example
