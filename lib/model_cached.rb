@@ -57,7 +57,7 @@ module ModelCached
             if (id = args.first).is_a?(Integer)
               find_by_id(id) || raise(ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{id}")
             else
-              super(args)
+              super(*args)
             end
           end
         end
