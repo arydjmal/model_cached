@@ -54,7 +54,7 @@ module ModelCached
       if column_names.include?(:id)
         class_eval do
           def self.find(*args)
-            if (id = args.first).is_a?(Integer)
+            if args.size == 1 && (id = args.first).is_a?(Integer)
               find_by_id(id) || raise(ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{id}")
             else
               super(*args)
