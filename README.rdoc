@@ -1,6 +1,6 @@
 = model_cached plugin
 
-This Rails 3 plugin gives you the ability to transparently cache single active record objects using memcached.
+This Rails 3 gem gives you the ability to transparently cache single active record objects using memcached.
 
 The purpose is to cache by fields that are being validated for unique values.
 
@@ -8,6 +8,7 @@ Cache gets refresh after save, and expire after destroy or after a logical delet
 
 It is less than 100 lines of code, so don't be shy to look at the source for full understanding.
 
+NOTE: For rails 2.x use the unmaintained rails2 branch.
 
 == Usage
 
