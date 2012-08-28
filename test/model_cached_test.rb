@@ -71,6 +71,12 @@ class ModelCachedTest < Test::Unit::TestCase
     @ary.destroy
     assert_equal nil, Rails.cache.read("users/id/#{@ary.id}")
   end
+
+  def test_refresh_should_not_happen_if_value_is_blank
+    @ary.update_attributes!(email: '')
+    assert_equal @ary, Rails.cache.read(@ary.mc_key(:id))
+    assert_equal nil, Rails.cache.read(@ary.mc_key(:email))
+  end
 end
 
 class ModelCachedWithScopeTest < Test::Unit::TestCase

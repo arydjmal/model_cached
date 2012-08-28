@@ -16,7 +16,7 @@ module ModelCached
       if column_names.include?(:id)
         class_eval do
           def self.find(*args)
-            if args.size == 1 && (id = args.first).is_a?(Integer)
+            if args.size == 1 and (id = args.first).is_a?(Integer)
               find_by_id(id) || raise(ActiveRecord::RecordNotFound, "Couldn't find #{name} with ID=#{id}")
             else
               super(*args)
@@ -64,11 +64,11 @@ module ModelCached
     end
 
     def refresh_mc_keys
-      if mc_logical_delete && send(mc_logical_delete)
+      if mc_logical_delete and send(mc_logical_delete)
         expire_mc_keys
       else
         mc_columns.each do |column|
-          Rails.cache.write(mc_key(column), self)
+          Rails.cache.write(mc_key(column), self) unless send(column).blank?
           if send("#{column}_changed?")
             Rails.cache.delete(mc_key(column, send("#{column}_was")))
           end
