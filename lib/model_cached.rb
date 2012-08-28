@@ -2,55 +2,17 @@ module ModelCached
   def self.included(base)
     base.extend(ClassMethods)
   end
-  
+
   module ClassMethods
     def cache_by(*column_names)
-      options = { :logical_delete => :deleted? }.merge(column_names.extract_options!)
-      scope = options.delete(:scope).inspect
-      
+      options = {logical_delete: nil, scope: nil}.merge(column_names.extract_options!)
+      options[:columns] = column_names
+      after_save :refresh_mc_keys
+      after_destroy :expire_mc_keys
+      class_eval %{ def self.mc_options; #{options}; end }
       column_names.each do |column|
-        inspected_column = column.to_s.inspect
-        
-        class_eval %{
-          before_update :set_old_cache_to_delete_by_#{column}, :if => :#{column}_changed?
-          after_update  :expire_old_cache_by_#{column},        :if => :old_cache_to_delete_by_#{column}
-          after_save    :refresh_or_expire_cache_by_#{column}
-          after_destroy :expire_cache_by_#{column}
-          
-          def self.find_by_#{column}(value)
-            find_cached_by(#{inspected_column}, value, #{scope})
-          end
-          
-          def set_old_cache_to_delete_by_#{column}
-            @old_cache_to_delete_by_#{column} = self.class.make_cache_key(#{inspected_column}, changes[#{inspected_column}].first, cache_key_scope(#{scope}))
-          end
-          
-          def old_cache_to_delete_by_#{column}
-            @old_cache_to_delete_by_#{column}
-          end
-          
-          def expire_old_cache_by_#{column}
-            Rails.cache.delete(old_cache_to_delete_by_#{column})
-          end
-          
-          def refresh_or_expire_cache_by_#{column}
-            if respond_to?(#{options[:logical_delete].to_s.inspect}) && send(#{options[:logical_delete].to_s.inspect})
-              expire_cache_by_#{column}
-            else
-              refresh_cache_by_#{column}
-            end
-          end
-          
-          def expire_cache_by_#{column}
-            expire_cache_by(#{inspected_column}, #{scope})
-          end
-          
-          def refresh_cache_by_#{column}
-            refresh_cache_by(#{inspected_column}, #{scope})
-          end
-        }, __FILE__, __LINE__
+        class_eval %{ def self.find_by_#{column}(value); find_cached_by(#{column.to_s.inspect}, value); end }
       end
-      
       if column_names.include?(:id)
         class_eval do
           def self.find(*args)
@@ -62,40 +24,58 @@ module ModelCached
           end
         end
       end
-      
       include ModelCached::InstanceMethods
     end
-    
-    def find_cached_by(column, value, scope)
-      if scope && !cache_key_scope(scope)
-        first(:conditions => {column => value})
+
+    def find_cached_by(column, value)
+      if mc_options[:scope] and mc_scope_key.nil?
+        where(column => value).first
       else
-        Rails.cache.fetch(make_cache_key(column, value, cache_key_scope(scope))) { first(:conditions => {column => value}) }
+        Rails.cache.fetch(mc_key(column, value)) { where(column => value).first }
       end
     end
 
-    def cache_key_scope(scope=nil)
-      if scope && scope_value = self.scope(:create, scope)
-        "#{scope}:#{scope_value}"
-      end
+    def mc_scope_key
+      self.new().mc_scope_key
     end
 
-    def make_cache_key(*args)
-      args.unshift(self.name.tableize).compact.join('/').gsub(/\s+/, '+')
+    def mc_key(column, value, scope_key=nil)
+      [column, value, scope_key || mc_scope_key].unshift(self.name.tableize).compact.join('/').gsub(/\s+/, '+')
     end
   end
-  
+
   module InstanceMethods
-    def refresh_cache_by(column, scope)
-      Rails.cache.write(self.class.make_cache_key(column, self.send(column), cache_key_scope(scope)), self)
+    def mc_columns; self.class.mc_options[:columns]; end
+    def mc_scope; self.class.mc_options[:scope]; end
+    def mc_logical_delete; self.class.mc_options[:logical_delete]; end
+
+    def mc_key(column, value=nil)
+      self.class.mc_key(column, value || self.send(column), mc_scope_key)
     end
-    
-    def expire_cache_by(column, scope)
-      Rails.cache.delete(self.class.make_cache_key(column, self.send(column), cache_key_scope(scope)))
+
+    def mc_scope_key
+      "#{mc_scope}:#{self.send(mc_scope)}" if mc_scope
     end
-    
-    def cache_key_scope(scope=nil)
-      "#{scope}:#{self.send(scope)}" if scope
+
+    def expire_mc_keys
+      mc_columns.each do |column|
+        Rails.cache.delete(mc_key(column))
+      end
+    end
+
+    def refresh_mc_keys
+      if mc_logical_delete && send(mc_logical_delete)
+        expire_mc_keys
+      else
+        mc_columns.each do |column|
+          Rails.cache.write(mc_key(column), self)
+          if send("#{column}_changed?")
+            Rails.cache.delete(mc_key(column, send("#{column}_was")))
+          end
+        end
+      end
     end
   end
 end
+
+ActiveRecord::Base.send(:include, ModelCached)

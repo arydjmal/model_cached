@@ -1,6 +1,6 @@
 = model_cached plugin
 
-This Rails plugin gives you the ability to transparently cache single active record objects using memcached.
+This Rails 3 plugin gives you the ability to transparently cache single active record objects using memcached.
 
 The purpose is to cache by fields that are being validated for unique values.
 
@@ -25,9 +25,8 @@ In your model:
   # eg: current_account.users.find_by_id(1) => will use cache
   cache_by :id, :email, :scope => :account_id
 
-  # you should use the :logical_delete option if the method to verify a record is deleted
-  # is different than :deleted?, disregard if not using logical deletes
-  # so out of the box the plugin works with destroys and with logical deletes
+  # you should use the :logical_delete option specifying the method that checks if a record is deleted
+  # disregard if not using logical deletes
   cache_by :id, :email, :logical_delete => :is_deleted?
 
 == Real life example
@@ -46,13 +45,12 @@ In your model:
     before_filter :require_account, :require_user
     
     private
-    
     def current_account
-      @account ||= Account.find_by_subdomain(request.subdomains(0).first)
+      @_current_account ||= Account.find_by_subdomain(request.subdomain)
     end
     
     def current_user
-      @user ||= session[:user_id] ? current_account.users.find_by_id(session[:user_id]) : nil
+      @_current_user ||= session[:user_id] ? current_account.users.find_by_id(session[:user_id]) : nil
     end
     
     def require_account
@@ -80,4 +78,4 @@ In your model:
 
 
 
-Copyright (c) 2010 Ary Djmal, released under the MIT license
+Copyright (c) 2012 Ary Djmal, released under the MIT license
