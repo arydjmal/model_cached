@@ -75,7 +75,9 @@ In your model:
 
 == Install
 
-  ./script/plugin install git://github.com/arydjmal/model_cached.git
+In your Gemfile:
+
+  gem 'model_cached'
 
 
 
