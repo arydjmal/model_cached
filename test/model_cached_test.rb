@@ -81,9 +81,12 @@ end
 
 class ModelCachedWithScopeTest < Test::Unit::TestCase
   def setup
+    Account.delete_all
     User.delete_all
-    User.send(:cache_by, :id, :email, :scope => :account_id)
-    @account = Account.create!(:name => 'Natural Bits')
+    Account.send(:cache_by, :name)
+    User.send(:belongs_to, :account, touch: true)
+    User.send(:cache_by, :id, :email, scope: :account_id)
+    @account = Account.create!(:name => 'NaturalBits')
     @ary  = @account.users.create!(:email => 'Ary')
     @nati = @account.users.create!(:email => 'Nati')
     Rails.cache.clear
@@ -137,6 +140,15 @@ class ModelCachedWithScopeTest < Test::Unit::TestCase
     @ary.save
     assert_equal nil, Rails.cache.read("users/email/Ary/account_id:#{@account.id}")
     assert_equal @ary, Rails.cache.read("users/email/new_email/account_id:#{@account.id}")
+  end
+
+  def test_refresh_on_parent_touch
+    assert_equal nil, Rails.cache.read('accounts/name/NaturalBits')
+    @account = Account.find_by_name('NaturalBits')
+    assert_equal @account.cache_key, Rails.cache.read('accounts/name/NaturalBits').cache_key
+    sleep 1.second
+    @ary.save!
+    assert_not_equal @account.cache_key, Rails.cache.read('accounts/name/NaturalBits').cache_key
   end
 end
 

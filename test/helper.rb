@@ -13,12 +13,14 @@ ActiveRecord::Base.establish_connection({
 ActiveRecord::Schema.define do
   create_table :accounts do |t|
     t.string  :name
+    t.timestamps
   end
 
   create_table :users do |t|
     t.string  :email
     t.integer :account_id
     t.boolean :deleted
+    t.timestamps
   end
 end
 

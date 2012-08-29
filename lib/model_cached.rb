@@ -8,6 +8,7 @@ module ModelCached
       options = {logical_delete: nil, scope: nil}.merge(column_names.extract_options!)
       options[:columns] = column_names
       after_save :refresh_mc_keys
+      after_touch :refresh_mc_keys
       after_destroy :expire_mc_keys
       class_eval %{ def self.mc_options; #{options}; end }
       column_names.each do |column|
