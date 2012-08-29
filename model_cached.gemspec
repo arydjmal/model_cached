@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'model_cached'
-  s.version     = '0.1.1'
+  s.version     = '0.1.2'
   s.authors     = ['Ary Djmal']
   s.email       = ['arydjmal@gmail.com']
   s.summary     = 'Rails gem that gives you the ability to transparently cache single active record objects using memcached.'
